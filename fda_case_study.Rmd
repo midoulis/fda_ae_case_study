@@ -1,0 +1,60 @@
+---
+title: "openFDA medicinal product coocc"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+```{r}
+
+get_data <- function(k){
+  
+  api_url <- "https://api.fda.gov/drug/event.json?search=receivedate:[20160101+TO+20170601]&limit=100"
+  data <- jsonlite::fromJSON(api_url, simplifyDataFrame = T)
+  data <- data$results
+  data <- data$patient
+  data <- data$drug
+
+  data <- sapply(data,function(x) x$medicinalproduct)
+  all_data <- data
+  
+  for(i in 1:k){
+    api_url <- paste("https://api.fda.gov/drug/event.json?search=receivedate:[20160101+TO+20170601]&limit=100&skip=", i*100, sep = "")
+    data <- jsonlite::fromJSON(api_url, simplifyDataFrame = T)
+    data <- data$results
+    data <- data$patient
+    data <- data$drug
+
+    data <- sapply(data,function(x) x$medicinalproduct)
+    all_data <- c(all_data,data)
+  }
+  return(all_data)
+}
+
+```
+
+```{r}
+
+all_reports <- get_data(19)
+all_reports <- sapply(all_reports, function(x) gsub("\\.","",x))
+
+meds_list <- as(all_reports, "transactions")
+
+summary((meds_list))
+summary(itemFrequency(meds_list))
+
+frequentMeds <- eclat(meds_list, parameter = list(supp=0.005, maxlen= 5))
+frequentMeds <- apriori(meds_list, parameter=list(target="frequent", supp = 0.01))
+
+itemFrequencyPlot(meds_list, topN = 10, type="absolute")
+rules <- apriori(meds_list, parameter = list(supp=0.005, conf = 0.01, maxlen = 10))
+
+sorted_rules <- sort(rules, by = "confidence", decreasing = T)
+
+inspect(head(sorted_rules, n=50))
+
+```
+
+
+

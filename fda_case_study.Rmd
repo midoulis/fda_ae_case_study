@@ -3,9 +3,7 @@ title: "openFDA medicinal product coocc"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-20117. There is a limit of 100 reports you can retrieve per query. 
 ```{r}
 
 get_data <- function(k){
@@ -34,10 +32,15 @@ get_data <- function(k){
 
 ```
 
+
+Get the 2000 reports and clean the data (drug names)
 ```{r}
 
-all_reports <- get_data(19)
+all_reports <- get_data(99)
 all_reports <- sapply(all_reports, function(x) gsub("\\.","",x))
+all_reports <- sapply(all_reports, function(x) gsub("\\{","",x))
+
+
 
 meds_list <- as(all_reports, "transactions")
 
@@ -45,15 +48,27 @@ summary((meds_list))
 summary(itemFrequency(meds_list))
 
 frequentMeds <- apriori(meds_list, parameter=list(target="frequent", supp = 0.01))
+itemFrequencyPlot(meds_list, topN = 5, type="absolute")
 
-itemFrequencyPlot(meds_list, topN = 10, type="absolute")
-rules <- apriori(meds_list, parameter = list(supp=0.005, conf = 0.01, maxlen = 10, minlen = 2))
+rules <- apriori(meds_list,parameter = list(supp=0.002, conf = 0.01, maxlen = 10, minlen = 2))
+#, appearance = list (default="rhs",lhs="RETROVIR")
+rules <- rules[!is.redundant(rules, measure = "lift")]
+inspect(rules[!is.redundant(rules, measure = "lift")])
 
-sorted_rules <- sort(rules, by = "confidence", decreasing = T)
+sorted_rules <- sort(rules, by = "lift", decreasing = T)
 
 inspect(head(sorted_rules, n=50))
 
 ```
 
+Visualisations
+```{r}
+source("http://bioconductor.org/biocLite.R")
+    biocLite("Rgraphviz")
 
+rules_to_plot <- head(sorted_rules,15)
+plot(rules_to_plot, method = "graph", control = list(type = "items",engine = "graphviz") )
+
+
+```
 

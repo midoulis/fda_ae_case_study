@@ -47,7 +47,7 @@ summary(itemFrequency(meds_list))
 frequentMeds <- apriori(meds_list, parameter=list(target="frequent", supp = 0.01))
 
 itemFrequencyPlot(meds_list, topN = 10, type="absolute")
-rules <- apriori(meds_list, parameter = list(supp=0.005, conf = 0.01, maxlen = 10))
+rules <- apriori(meds_list, parameter = list(supp=0.005, conf = 0.01, maxlen = 10, minlen = 2))
 
 sorted_rules <- sort(rules, by = "confidence", decreasing = T)
 

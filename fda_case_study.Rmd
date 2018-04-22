@@ -44,7 +44,6 @@ meds_list <- as(all_reports, "transactions")
 summary((meds_list))
 summary(itemFrequency(meds_list))
 
-frequentMeds <- eclat(meds_list, parameter = list(supp=0.005, maxlen= 5))
 frequentMeds <- apriori(meds_list, parameter=list(target="frequent", supp = 0.01))
 
 itemFrequencyPlot(meds_list, topN = 10, type="absolute")

@@ -77,7 +77,7 @@ Start by defining the minimum support in the dataset. Check the summary of the "
 summ_meds_list <- summary((meds_list))
 ```
 
-We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/1000 = `r 5/10000`. We also set the minimum confidence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
+We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/10000 = 0.0005. We also set the minimum confidence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
 
 ```{r}
 #maxlen defines the maximum number or items in a rule and minlen the minimum. minlen is set to 2 to avoid rules of the form {}=>{drug_name}

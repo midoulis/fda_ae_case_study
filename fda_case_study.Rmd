@@ -1,6 +1,8 @@
 ---
 title: "openFDA medicinal product coocc"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-20117. There is a limit of 100 reports you can retrieve per query. 
@@ -33,42 +35,24 @@ get_data <- function(k){
 ```
 
 
-Get the 10000 reports and clean the data (drug names)
+Get the get the first 100+99*100 reports between 01-01-2016 and 01-06-20117 and clean the data (drug names).
 ```{r}
 
+ 
 all_reports <- get_data(99)
+#remove dots
 all_reports <- sapply(all_reports, function(x) gsub("\\.","",x))
+#remove curly brackets
 all_reports <- sapply(all_reports, function(x) gsub("\\{","",x))
 
-
-
-meds_list <- as(all_reports, "transactions")
-
-summary((meds_list))
-summary(itemFrequency(meds_list))
-
-frequentMeds <- apriori(meds_list, parameter=list(target="frequent", supp = 0.01))
-itemFrequencyPlot(meds_list, topN = 5, type="absolute")
-
-rules <- apriori(meds_list,parameter = list(supp=0.002, conf = 0.01, maxlen = 10, minlen = 2))
-#, appearance = list (default="rhs",lhs="RETROVIR")
-rules <- rules[!is.redundant(rules, measure = "lift")]
-inspect(rules[!is.redundant(rules, measure = "lift")])
-
-sorted_rules <- sort(rules, by = "lift", decreasing = T)
-
-inspect(head(sorted_rules, n=50))
-
 ```
 
+The idea is to try to find associations among drugs, i.e. which drugs tend to be taken together, by using the same method applied in Market Basket Analysis - Association Rules. 
 
-```{r}
-#convert the list to class transactions to use with the arules package
-meds_list <- as(all_reports, "transactions")
-```
+We will use the arules package for the analysis and on top of that the arulesViz package for visualizations.
 
-1 adverse event report (ae report) == 1 transaction
-itemset == set of one or more drugs 
+We make the following assumption:
+An adverse event report (ae report) is one transaction and the drugs listed in the report are the purchased items. An itemset then is a set of one or more drugs. 
 
 Association measures:
 
@@ -79,45 +63,81 @@ Confidence (A->B) = Support(A,B)/Support(A).Caveat with confidence: it only acco
 are taken together than expected if they were statistically independent. A lift value of 1 indicates independence between drug A and B.
 
 
+Load the retrieved data from the API in the appropriate format
 
-Lets start by defining the minimum support in our dataset. Check the summary of the "transactions"
+```{r}
+require(arules)
+
+#convert the list to class transactions to use with the arules package
+meds_list <- as(all_reports, "transactions")
+```
+
+
+Start by defining the minimum support in the dataset. Check the summary of the "transactions"
 ```{r}
 summ_meds_list <- summary((meds_list))
 ```
 
-We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/1000 = `r 5/10000`. We also set minimum confodence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
+We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/1000 = `r 5/10000`. We also set the minimum confidence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
 
 ```{r}
 #maxlen defines the maximum number or items in a rule and minlen the minimum. minlen is set to 2 to avoid rules of the form {}=>{drug_name}
 rules <- apriori(meds_list,parameter = list(supp=0.0005, conf = 0.5, maxlen = 20, minlen = 2))
 ```
 
-```{r}
-rules <- rules[!is.redundant(rules, measure = "lift")]
+We get `r nrow(rules@quality)` rules. We can remove the redundant rules. A rule is redundant if a more general rule with the same or a higher confidence exists. A rule is more general if it has the same RHS but one or more items removed from the LHS. 
 
+```{r}
+#remove redundant rules, 
+rules <- rules[!is.redundant(rules, measure = "confidence")]
+```
+
+Sorting the remaining rules by their lift, we can inspect the top 10 rules with the highest lift. We focus on lift here, because the higher the lift gets the lower the probability that the relationship between the two itemsets is a coincidence.
+
+```{r}
+#sort rules by lift in decreasing order
 sorted_rules <- sort(rules, by = "lift", decreasing = T)
 
-inspect(head(sorted_rules, n=50))
-
+sorted_lhs <- as(lhs(sorted_rules), "list")
+sorted_rhs <- as(rhs(sorted_rules), "list")
 ```
 
 
 
-Visualisations
+```{r}
+inspect(head(sorted_rules, n=10))
+```
+From the rules we can observe some patterns such as:
+
+If someone took `r sorted_rhs[[1]]` is likely to have taken `r sorted_lhs[[1]]` as well.
+
+OR
+
+If someone takes `r sorted_rhs[[7]]` is likely to have taken `r sorted_lhs[[7]]` as well.
+
+These patterns emerge from rules with high confidence AND lift.
+
+#Visualisations
+
+Using the arulesViz package we can quickly produce some visualisations. 
+
+To get an overview of the rules we can use a scatter plot with two interest measures on the axes, in our case, lift(on y) and support(on x). Moreover, a third measure (confidence) is used as the color of the points.
+
+In the following plot we can see that rules with high lift have typically a relatively low support, as expected. This plot can also be interactive, i.e. by hovering over the points in the plot we see the underlying rules.
 
 ```{r}
+require(arulesViz)
+require(igraph)
+
 plot(rules, measure=c("support", "lift"), shading="confidence")
 ```
 
 
+Graph based visualisations can also be utilised, albeit for a small portion of the extracted rules. Here, rules are represented as nodes. Node size is proportional to the rule's support, while the darker the node is colored the higher its lift. In the following graph we can observe the same 10 rules as before. LHS itemsets are incoming edges in vertices, while RHS are outgoing.
 
 ```{r}
-source("http://bioconductor.org/biocLite.R")
-    biocLite("Rgraphviz")
-
-rules_to_plot <- head(sorted_rules,15)
-plot(rules_to_plot, method = "graph", control = list(type = "items",engine = "graphviz") )
-
+rules_to_plot <- head(sorted_rules,10)
+graph <- plot(rules_to_plot, method = "graph", control = list(cex = .6, alpha = 0.9, igraph::layout_nicely, precision = 10) )
 
 ```
 

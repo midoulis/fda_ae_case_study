@@ -33,7 +33,7 @@ get_data <- function(k){
 ```
 
 
-Get the 2000 reports and clean the data (drug names)
+Get the 10000 reports and clean the data (drug names)
 ```{r}
 
 all_reports <- get_data(99)
@@ -61,7 +61,56 @@ inspect(head(sorted_rules, n=50))
 
 ```
 
+
+```{r}
+#convert the list to class transactions to use with the arules package
+meds_list <- as(all_reports, "transactions")
+```
+
+1 adverse event report (ae report) == 1 transaction
+itemset == set of one or more drugs 
+
+Association measures:
+
+1.  Support. Measures the proportion of ae reports in which an itemset (containing one or more drugs) appears.
+2.  Confidence. Measures how likely drug B is taken when drug A is taken,
+Confidence (A->B) = Support(A,B)/Support(A).Caveat with confidence: it only accounts for how popular drug A is. If drug B is also very popular in the dataset, there will be a higher chance that an ae report containing drug A will also contain drug B, thus inflating the confidence.
+3.  Lift, measures how likely drug B is taken when drug A is taken while accounting for how popular drug B is in the dataset. Lift measures how many times more often drug A and B
+are taken together than expected if they were statistically independent. A lift value of 1 indicates independence between drug A and B.
+
+
+
+Lets start by defining the minimum support in our dataset. Check the summary of the "transactions"
+```{r}
+summ_meds_list <- summary((meds_list))
+```
+
+We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/1000 = `r 5/10000`. We also set minimum confodence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
+
+```{r}
+#maxlen defines the maximum number or items in a rule and minlen the minimum. minlen is set to 2 to avoid rules of the form {}=>{drug_name}
+rules <- apriori(meds_list,parameter = list(supp=0.0005, conf = 0.5, maxlen = 20, minlen = 2))
+```
+
+```{r}
+rules <- rules[!is.redundant(rules, measure = "lift")]
+
+sorted_rules <- sort(rules, by = "lift", decreasing = T)
+
+inspect(head(sorted_rules, n=50))
+
+```
+
+
+
 Visualisations
+
+```{r}
+plot(rules, measure=c("support", "lift"), shading="confidence")
+```
+
+
+
 ```{r}
 source("http://bioconductor.org/biocLite.R")
     biocLite("Rgraphviz")

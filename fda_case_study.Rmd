@@ -1,11 +1,10 @@
 ---
-title: "openFDA medicinal product coocc"
+title: "Mining drugs that are taken together using the openFDA API"
 output:
   pdf_document: default
-  html_notebook: default
 ---
 
-This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-20117. There is a limit of 100 reports you can retrieve per query. 
+This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-20117. There is a limit of 100 reports you can retrieve per query. More reports are extracted by using the skip parameter.
 ```{r}
 
 get_data <- function(k){
@@ -63,7 +62,7 @@ Confidence (A->B) = Support(A,B)/Support(A).Caveat with confidence: it only acco
 are taken together than expected if they were statistically independent. A lift value of 1 indicates independence between drug A and B.
 
 
-Load the retrieved data from the API in the appropriate format
+Load the retrieved data from the API in the appropriate format.
 
 ```{r}
 require(arules)

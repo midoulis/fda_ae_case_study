@@ -4,7 +4,7 @@ output:
   pdf_document: default
 ---
 
-This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-20117. There is a limit of 100 reports you can retrieve per query. More reports are extracted by using the skip parameter.
+This function calls the adverse events endpoint of the openFDA API to retrieve reports submitted between 01-01-2016 and 01-06-2017. There is a limit of 100 reports you can retrieve per query. More reports are extracted by using the skip parameter.
 ```{r}
 
 get_data <- function(k){
@@ -64,7 +64,7 @@ are taken together than expected if they were statistically independent. A lift 
 
 Load the retrieved data from the API in the appropriate format.
 
-```{r}
+```{r, message=F, warning=F}
 require(arules)
 
 #convert the list to class transactions to use with the arules package
@@ -80,7 +80,8 @@ summ_meds_list <- summary((meds_list))
 We see that the most frequent item(medicine) is `r names(summ_meds_list@itemSummary[1])` and occurs `r summ_meds_list@itemSummary[1]` times in the dataset. It means that this particular medicine has a support of `r summ_meds_list@itemSummary[1]/summ_meds_list@Dim[1]`. For the purposes of this brief exploratory analysis we want to consider medicines that appear at least 5 times in these 10000 reports, therefore we set the minimum support to 5/10000 = 0.0005. We also set the minimum confidence at 0.5 and run the apriori algorithm to obtain the association rules for the dataset.
 
 ```{r}
-#maxlen defines the maximum number or items in a rule and minlen the minimum. minlen is set to 2 to avoid rules of the form {}=>{drug_name}
+#maxlen defines the maximum number or items in a rule and minlen the minimum
+#minlen is set to 2 to avoid rules of the form {}=>{drug_name}
 rules <- apriori(meds_list,parameter = list(supp=0.0005, conf = 0.5, maxlen = 20, minlen = 2))
 ```
 
@@ -124,7 +125,7 @@ To get an overview of the rules we can use a scatter plot with two interest meas
 
 In the following plot we can see that rules with high lift have typically a relatively low support, as expected. This plot can also be interactive, i.e. by hovering over the points in the plot we see the underlying rules.
 
-```{r}
+```{r, message=F, warning=F}
 require(arulesViz)
 require(igraph)
 
